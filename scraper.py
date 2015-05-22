@@ -36,15 +36,20 @@ game_url = "%s%slinescore.xml" % (base_url, series)
 game_response = requests.get(game_url)
 game_info = BeautifulSoup(game_response.text, 'xml')
 
-# Get the starting time and team info
-game_time = "%s%s" % (game_info.game['away_time'], game_info.game['away_ampm'])
-time_zone = "%s" % game_info.game['away_time_zone']
+# Get the starting time and convert it to CT (Time zone Cubs play in)
+game_time = "%s%s" % (game_info.game['time'], game_info.game['ampm'])
+time_format = "%s-%s-%s %s" % (year, month, day, game_time)
+time_zone = "CT"
+start_time_CT = datetime.strptime(time_format, "%Y-%m-%d %I:%M%p")
+start_time_CT = start_time_CT.replace(hour = start_time_CT.hour - 1)
+
+
 away = "%s (%s-%s)" % (game_info.game['away_team_name'], game_info.game['away_win'], game_info.game['away_loss'])
 home = "%s (%s-%s)" % (game_info.game['home_team_name'], game_info.game['home_win'], game_info.game['home_loss'])
 
 # Print and save gameday info
-print("Gameday:\n%s/%s %s @ %s %s %s\n" % (month, day, away, home, game_time, time_zone))
-file.write("Gameday:\n%s/%s %s @ %s %s %s\n\n" % (month, day, away, home, game_time, time_zone))
+print("Gameday:\n%s/%s %s @ %s %s %s\n" % (month, day, away, home, start_time_CT.strftime("%I:%M%p"), time_zone))
+file.write("Gameday:\n%s/%s %s @ %s %s %s\n\n" % (month, day, away, home, start_time_CT.strftime("%I:%M%p"), time_zone))
 
 # Form the highlights url and parse the highlights
 index_url = "%s%smedia/highlights.xml" % (base_url, series)
@@ -56,11 +61,7 @@ file.write("Highlights:\n")
 
 # Error check if there are no highlights
 if "[]" in str(current_highlights.find_all(team_id = '112')):
-	# Create a datetime object to compare times
-	time_format = "%s-%s-%s %s" % (year, month, day, game_time)
-	start_time = datetime.strptime(time_format, "%Y-%m-%d %I:%M%p")
-
-	if (now < start_time):
+	if (now < start_time_CT):
 		print("The game hasn't started yet!")
 		file.write("The game hasn't started yet!")
 	else:
